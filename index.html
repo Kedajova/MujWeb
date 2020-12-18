@@ -46,7 +46,7 @@
         var scene = null;
         var sceneToRender = null;
         var createDefaultEngine = function() { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true,  disableWebGL2Support: false}); };
-        var createScene = function () {
+        var createScene = async function () {
     // This creates a basic Babylon Scene object (non-mesh)
     var scene = new BABYLON.Scene(engine);
 
@@ -63,32 +63,56 @@
     var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
 
     // Default intensity is 1. Let's dim the light a small amount
-    light.intensity = 0.7;
+    light.intensity = 0.8;
 
-var i=0;
-for (i=0; i<5; i++) {
-    // Our built-in 'sphere' shape.
-    var sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter: 2, segments: 32}, scene);
-    // Move the sphere upward 1/2 its height
-    sphere.position.y = i;
- 
-if (i==2) {
-    var mat=new BABYLON.StandardMaterial("blue",scene);
-    mat.emissiveColor=new BABYLON.Color3(0.14, 0.14, 0.95);
-    sphere.material=mat;
-     }
+    var ground = BABYLON.MeshBuilder.CreateGround("ground",{width:1000,height:1000})
+    var groundmaterial = new BABYLON.GridMaterial("grid",scene)
+    groundmaterial.mainColor = new BABYLON.Color3(0.14, 0.03, 1)
+    ground.material = groundmaterial;
+    groundmaterial.opacity=0.6;
+
+    const xr = await scene.createDefaultXRExperienceAsync({
+    floorMeshes : [ground]
+})
+
+    var assetsManager = new BABYLON.AssetsManager(scene);
+    var tools=[];
+
+    assetsManager.onFinish = function (){
+        start();
+    }
+
+    var start = function (){
+        for (var i=0 ; i<tools.length; i++) {
+            tools[i].position.x+=i*15;
+            tools[i].scaling = new BABYLON.Vector3(0.1+i/25,0.1+i/40,0.1+i/30);
+
+        }
+        scene.registerBeforeRender(function(){
+           var rot = new BABYLON.Vector3(0,Math.PI,tools[2].rotation.z+=0.1);
+           tools[2].rotation=rot; 
+        }
+        )
+    }
+    var sixDOF= new BABYLON.SixDofDragBehavior();
+    var LoadTool = function(name,link,model,id) {
+        var task = assetsManager.addMeshTask(name,"",link,model)
+        task.onSuccess = function(geometry){
+            geometry.loadedMeshes[0].name=name;
+             geometry.loadedMeshes[0].addBehavior(sixDOF,true);
+                geometry.loadedMeshes[0].getChildMeshes;
+            tools[id]= geometry.loadedMeshes[0];
+            console.log(name);
+        }
 
     }
-debugger;
-    // Our built-in 'sphere' shape.
-    var sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter: 2, segments: 32}, scene);
 
-    // Move the sphere upward 1/2 its height
-    sphere.position.y = 1;
+    LoadTool("T0","https://dl.dropbox.com/s/wq7dqcvpp3359bp/Dragon3.glb?dl=0","Dragon3.glb",0);
+    LoadTool("T1","https://dl.dropbox.com/s/q8pqo0k0pei87pr/Dragon1.glb?dl=0","Dragon1.glb",1);
+    LoadTool("T2","https://dl.dropbox.com/s/q8pqo0k0pei87pr/Dragon1.glb?dl=0","Dragon1.glb",2);
+   
 
-    // Our built-in 'ground' shape.
-    var ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 6, height: 6}, scene);
-
+    assetsManager.load();
     return scene;
 };
                 var engine;
@@ -106,7 +130,8 @@ debugger;
                     engine = await asyncEngineCreation();
         if (!engine) throw 'engine should not be null.';
         scene = createScene();};
-        initFunction().then(() => {sceneToRender = scene        
+        initFunction().then(() => {scene.then(returnedScene => { sceneToRender = returnedScene; });
+                
             engine.runRenderLoop(function () {
                 if (sceneToRender && sceneToRender.activeCamera) {
                     sceneToRender.render();
