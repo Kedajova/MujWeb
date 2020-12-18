@@ -1,0 +1,65 @@
+var createScene = async function () {
+    // This creates a basic Babylon Scene object (non-mesh)
+    var scene = new BABYLON.Scene(engine);
+
+    // This creates and positions a free camera (non-mesh)
+    var camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene);
+
+    // This targets the camera to scene origin
+    camera.setTarget(BABYLON.Vector3.Zero());
+
+    // This attaches the camera to the canvas
+    camera.attachControl(canvas, true);
+
+    // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
+    var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+
+    // Default intensity is 1. Let's dim the light a small amount
+    light.intensity = 0.8;
+
+    var ground = BABYLON.MeshBuilder.CreateGround("ground",{width:1000,height:1000})
+    ground.material = new BABYLON.GridMaterial("grid",scene)
+    //groundmaterial.mainColor = new BABYLON.Color3(0.07, 0.5, 0.85)
+
+    const xr = await scene.createDefaultXRExperienceAsync({
+    floorMeshes : [ground]
+})
+
+    var assetsManager = new BABYLON.AssetsManager(scene);
+    var tools=[];
+
+    assetsManager.onFinish = function (){
+        start();
+    }
+
+    var start = function (){
+        for (var i=0 ; i<tools.length; i++) {
+            tools[i].position.x+=i*30;
+            tools[i].scaling = new BABYLON.Vector3(0.1+i/10,0.1+i/10,0.1+i);
+
+        }
+        scene.registerBeforeRender(function(){
+           var rot = new BABYLON.Vector3(0,Math.PI,tools[2].rotation.z+=0.1);
+           tools[2].rotation=rot; 
+        }
+        )
+    }
+
+    var LoadTool = function(name,link,model,id) {
+        var task = assetsManager.addMeshTask(name,"",link,model)
+        task.onSuccess = function(geometry){
+            geometry.loadedMeshes[0].name=name;
+            tools[id]= geometry.loadedMeshes[0];
+            console.log(name);
+        }
+
+    }
+
+    LoadTool("T0","https://dl.dropbox.com/s/wq7dqcvpp3359bp/Dragon3.glb?dl=0","Dragon3.glb",0);
+    LoadTool("T1","https://dl.dropbox.com/s/q8pqo0k0pei87pr/Dragon1.glb?dl=0","Dragon1.glb",1);
+    LoadTool("T2","https://dl.dropbox.com/s/q8pqo0k0pei87pr/Dragon1.glb?dl=0","Dragon1.glb",2);
+   
+
+    assetsManager.load();
+    return scene;
+};
